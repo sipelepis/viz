@@ -12,6 +12,6 @@ pnpm build
 | --- | --- |
 | `packages/design-system` | Akashi design system: `tokens.css` (CSS variables) and `index.css` (fonts, base, type scale, buttons, cards, dialog). Spec: [DESIGN.md](packages/design-system/DESIGN.md). |
 | `apps/web` | Vite app. Currently a showcase of the design system. |
-| `data/raw` | Source files as downloaded: PSA 2024 registered deaths. |
+| `data` | Ground-truth datasets: raw sources, tidy CSVs, and checks against the publisher's figures. See [data/README.md](data/README.md). |
 
 Use it in an app with `import '@viz/design-system'` and add `"@viz/design-system": "workspace:^"` to that app's dependencies.
