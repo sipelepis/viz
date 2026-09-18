@@ -7,7 +7,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "@cancer/design-system": "workspace:^"
+    "@viz/design-system": "workspace:^"
   },
   "devDependencies": {
     "vite": "^8.3.0"

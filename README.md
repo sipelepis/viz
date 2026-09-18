@@ -1,6 +1,6 @@
-# cancer
+# viz
 
-Data visualisation on cancer and Philippine health care.
+My data and visualisation monorepo: datasets, charts, and the design system they share. First topic: cancer and Philippine health care.
 
 ```
 pnpm install
@@ -14,4 +14,4 @@ pnpm build
 | `apps/web` | Vite app. Currently a showcase of the design system. |
 | `data/raw` | Source files as downloaded: PSA 2024 registered deaths. |
 
-Use it in an app with `import '@cancer/design-system'` and add `"@cancer/design-system": "workspace:^"` to that app's dependencies.
+Use it in an app with `import '@viz/design-system'` and add `"@viz/design-system": "workspace:^"` to that app's dependencies.

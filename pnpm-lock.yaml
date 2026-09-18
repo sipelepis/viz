@@ -10,7 +10,7 @@ importers:
 
   apps/web:
     dependencies:
-      '@cancer/design-system':
+      '@viz/design-system':
         specifier: workspace:^
         version: link:../../packages/design-system
     devDependencies:

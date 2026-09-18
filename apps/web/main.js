@@ -1,1 +1,1 @@
-import '@cancer/design-system'
+import '@viz/design-system'
