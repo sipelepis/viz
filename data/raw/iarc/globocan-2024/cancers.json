@@ -1,0 +1,412 @@
+[
+ {
+  "id": 1,
+  "cancer": 1,
+  "label": "Lip, oral cavity",
+  "short_label": "Lip, oral cavity",
+  "ICD": "C00-06",
+  "gender": 0,
+  "color": "#AE563E",
+  "cancer_order": 3
+ },
+ {
+  "id": 2,
+  "cancer": 2,
+  "label": "Salivary glands",
+  "short_label": "Salivary glands",
+  "ICD": "C07-08",
+  "gender": 0,
+  "color": "#57A67A",
+  "cancer_order": 4
+ },
+ {
+  "id": 3,
+  "cancer": 3,
+  "label": "Oropharynx",
+  "short_label": "Oropharynx",
+  "ICD": "C09-10",
+  "gender": 0,
+  "color": "#00F5B6",
+  "cancer_order": 5
+ },
+ {
+  "id": 4,
+  "cancer": 4,
+  "label": "Nasopharynx",
+  "short_label": "Nasopharynx",
+  "ICD": "C11",
+  "gender": 0,
+  "color": "#A54F57",
+  "cancer_order": 6
+ },
+ {
+  "id": 5,
+  "cancer": 5,
+  "label": "Hypopharynx",
+  "short_label": "Hypopharynx",
+  "ICD": "C12-13",
+  "gender": 0,
+  "color": "#6D8A6D",
+  "cancer_order": 7
+ },
+ {
+  "id": 6,
+  "cancer": 6,
+  "label": "Oesophagus",
+  "short_label": "Oesophagus",
+  "ICD": "C15",
+  "gender": 0,
+  "color": "#DC1341",
+  "cancer_order": 8
+ },
+ {
+  "id": 7,
+  "cancer": 7,
+  "label": "Stomach",
+  "short_label": "Stomach",
+  "ICD": "C16",
+  "gender": 0,
+  "color": "#4682B4",
+  "cancer_order": 9
+ },
+ {
+  "id": 8,
+  "cancer": 8,
+  "label": "Colon",
+  "short_label": "Colon",
+  "ICD": "C18",
+  "gender": 0,
+  "color": "#FFD803",
+  "cancer_order": 10
+ },
+ {
+  "id": 9,
+  "cancer": 9,
+  "label": "Rectum",
+  "short_label": "Rectum",
+  "ICD": "C19-20",
+  "gender": 0,
+  "color": "#60A561",
+  "cancer_order": 12
+ },
+ {
+  "id": 10,
+  "cancer": 10,
+  "label": "Anus",
+  "short_label": "Anus",
+  "ICD": "C21",
+  "gender": 0,
+  "color": "#849F79",
+  "cancer_order": 13
+ },
+ {
+  "id": 11,
+  "cancer": 11,
+  "label": "Liver and intrahepatic bile ducts",
+  "short_label": "Liver",
+  "ICD": "C22",
+  "gender": 0,
+  "color": "#F3A654",
+  "cancer_order": 14
+ },
+ {
+  "id": 12,
+  "cancer": 12,
+  "label": "Gallbladder",
+  "short_label": "Gallbladder",
+  "ICD": "C23",
+  "gender": 0,
+  "color": "#22F000",
+  "cancer_order": 15
+ },
+ {
+  "id": 13,
+  "cancer": 13,
+  "label": "Pancreas",
+  "short_label": "Pancreas",
+  "ICD": "C25",
+  "gender": 0,
+  "color": "#940009",
+  "cancer_order": 16
+ },
+ {
+  "id": 14,
+  "cancer": 14,
+  "label": "Larynx",
+  "short_label": "Larynx",
+  "ICD": "C32",
+  "gender": 0,
+  "color": "#a9d4ba",
+  "cancer_order": 17
+ },
+ {
+  "id": 15,
+  "cancer": 15,
+  "label": "Trachea, bronchus and lung",
+  "short_label": "Lung",
+  "ICD": "C33-34",
+  "gender": 0,
+  "color": "#1E90FF",
+  "cancer_order": 18
+ },
+ {
+  "id": 16,
+  "cancer": 16,
+  "label": "Melanoma of skin",
+  "short_label": "Melanoma of skin",
+  "ICD": "C43",
+  "gender": 0,
+  "color": "#894919",
+  "cancer_order": 19
+ },
+ {
+  "id": 17,
+  "cancer": 17,
+  "label": "Non-melanoma skin cancer",
+  "short_label": "NMSC",
+  "ICD": "C44",
+  "gender": 0,
+  "color": "#85C922",
+  "cancer_order": 20
+ },
+ {
+  "id": 18,
+  "cancer": 18,
+  "label": "Mesothelioma",
+  "short_label": "Mesothelioma",
+  "ICD": "C45",
+  "gender": 0,
+  "color": "#512c62",
+  "cancer_order": 21
+ },
+ {
+  "id": 19,
+  "cancer": 19,
+  "label": "Kaposi sarcoma",
+  "short_label": "Kaposi sarcoma",
+  "ICD": "C46",
+  "gender": 0,
+  "color": "#FFC2CA",
+  "cancer_order": 22
+ },
+ {
+  "id": 20,
+  "cancer": 20,
+  "label": "Breast",
+  "short_label": "Breast",
+  "ICD": "C50",
+  "gender": 2,
+  "color": "#FF68BC",
+  "cancer_order": 23
+ },
+ {
+  "id": 21,
+  "cancer": 21,
+  "label": "Vulva",
+  "short_label": "Vulva",
+  "ICD": "C51",
+  "gender": 2,
+  "color": "#FF6C7D",
+  "cancer_order": 24
+ },
+ {
+  "id": 22,
+  "cancer": 22,
+  "label": "Vagina",
+  "short_label": "Vagina",
+  "ICD": "C52",
+  "gender": 2,
+  "color": "#FF713F",
+  "cancer_order": 25
+ },
+ {
+  "id": 23,
+  "cancer": 23,
+  "label": "Cervix uteri",
+  "short_label": "Cervix uteri",
+  "ICD": "C53",
+  "gender": 2,
+  "color": "#FF7500",
+  "cancer_order": 26
+ },
+ {
+  "id": 24,
+  "cancer": 24,
+  "label": "Corpus uteri",
+  "short_label": "Corpus uteri",
+  "ICD": "C54",
+  "gender": 2,
+  "color": "#9FE72D",
+  "cancer_order": 27
+ },
+ {
+  "id": 25,
+  "cancer": 25,
+  "label": "Ovary",
+  "short_label": "Ovary",
+  "ICD": "C56",
+  "gender": 2,
+  "color": "#8C07C2",
+  "cancer_order": 28
+ },
+ {
+  "id": 26,
+  "cancer": 26,
+  "label": "Penis",
+  "short_label": "Penis",
+  "ICD": "C60",
+  "gender": 1,
+  "color": "#E69C56",
+  "cancer_order": 29
+ },
+ {
+  "id": 27,
+  "cancer": 27,
+  "label": "Prostate",
+  "short_label": "Prostate",
+  "ICD": "C61",
+  "gender": 1,
+  "color": "#34A76E",
+  "cancer_order": 30
+ },
+ {
+  "id": 28,
+  "cancer": 28,
+  "label": "Testis",
+  "short_label": "Testis",
+  "ICD": "C62",
+  "gender": 1,
+  "color": "#ae56a2",
+  "cancer_order": 31
+ },
+ {
+  "id": 29,
+  "cancer": 29,
+  "label": "Kidney",
+  "short_label": "Kidney",
+  "ICD": "C64",
+  "gender": 0,
+  "color": "#040186",
+  "cancer_order": 32
+ },
+ {
+  "id": 30,
+  "cancer": 30,
+  "label": "Bladder",
+  "short_label": "Bladder",
+  "ICD": "C67",
+  "gender": 0,
+  "color": "#278D29",
+  "cancer_order": 33
+ },
+ {
+  "id": 31,
+  "cancer": 31,
+  "label": "Brain, central nervous system",
+  "short_label": "Brain, CNS",
+  "ICD": "C70-72",
+  "gender": 0,
+  "color": "#D5BED2",
+  "cancer_order": 34
+ },
+ {
+  "id": 32,
+  "cancer": 32,
+  "label": "Thyroid",
+  "short_label": "Thyroid",
+  "ICD": "C73",
+  "gender": 0,
+  "color": "#ADD9E4",
+  "cancer_order": 35
+ },
+ {
+  "id": 33,
+  "cancer": 33,
+  "label": "Hodgkin lymphoma",
+  "short_label": "Hodgkin lymphoma",
+  "ICD": "C81",
+  "gender": 0,
+  "color": "#44e453",
+  "cancer_order": 36
+ },
+ {
+  "id": 34,
+  "cancer": 34,
+  "label": "Non-Hodgkin lymphoma",
+  "short_label": "NHL",
+  "ICD": "C82-86+C88",
+  "gender": 0,
+  "color": "#9931D0",
+  "cancer_order": 37
+ },
+ {
+  "id": 35,
+  "cancer": 35,
+  "label": "Multiple myeloma",
+  "short_label": "Multiple myeloma",
+  "ICD": "C90",
+  "gender": 0,
+  "color": "#f0c878",
+  "cancer_order": 38
+ },
+ {
+  "id": 36,
+  "cancer": 36,
+  "label": "Leukaemia",
+  "short_label": "Leukaemia",
+  "ICD": "C91-95",
+  "gender": 0,
+  "color": "#FFFFA6",
+  "cancer_order": 39
+ },
+ {
+  "id": 37,
+  "cancer": 37,
+  "label": "Other specified cancers",
+  "short_label": "Oth. specified",
+  "ICD": "OTH",
+  "gender": 0,
+  "color": "#DCDCDC",
+  "cancer_order": 40
+ },
+ {
+  "id": 38,
+  "cancer": 38,
+  "label": "Unspecified sites",
+  "short_label": "Unspecified",
+  "ICD": "C76-80+C96-97",
+  "gender": 0,
+  "color": "#DCDCDC",
+  "cancer_order": 41
+ },
+ {
+  "id": 39,
+  "cancer": 39,
+  "label": "All cancers",
+  "short_label": "All cancers",
+  "ICD": "C00-97",
+  "gender": 0,
+  "color": "#016841",
+  "cancer_order": 1
+ },
+ {
+  "id": 40,
+  "cancer": 40,
+  "label": "All cancers excl. non-melanoma skin cancer",
+  "short_label": "All cancers excl. C44",
+  "ICD": "C00-97/C44",
+  "gender": 0,
+  "color": "#016841",
+  "cancer_order": 2
+ },
+ {
+  "id": 41,
+  "cancer": 41,
+  "label": "Colorectum",
+  "short_label": "Colorectum",
+  "ICD": "C18-C21",
+  "gender": 0,
+  "color": "#FFD803",
+  "cancer_order": 11
+ }
+]

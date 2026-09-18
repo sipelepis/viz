@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""Ground-truth checks: the tidy CSVs in clean/ must agree with PSA's own publications
+"""Ground-truth checks: the tidy CSVs in clean/ must agree with the publishers' own publications (PSA, IARC)
 and add up internally. Exits non-zero on any mismatch.
 
-    python3 data/check.py    (needs openpyxl for the PSA workbooks)
+    python3 data/check.py    (needs openpyxl and pypdf for the published workbooks/PDFs)
 """
 import csv
+import json
 import re
 import sys
 from collections import defaultdict
 from pathlib import Path
 
 import openpyxl
+import pypdf
 
 DATA = Path(__file__).parent
 PSA_2024 = DATA / "raw/psa/2024-deaths"
@@ -109,8 +111,61 @@ for (reg, measure, a, s), v in pop.items():
 for k, v in by_age.items():
     expect(v == pop[k], f"population {k}: age groups sum to {v}, total {pop[k]}")
 
+# 5. GLOBOCAN 2024: the API snapshot equals IARC's published fact sheet (PDF), and adds up.
+gco = {(r["measure"], r["sex"], r["cancer_code"]): int(r["count"]) for r in load("globocan")}
+asr = {(r["measure"], r["sex"]): float(r["asr_world"]) for r in load("globocan") if r["cancer_code"] == "39"}
+page1, page2 = (p.extract_text() for p in pypdf.PdfReader(DATA / "raw/iarc/globocan-2024/fact-sheet.pdf").pages)
+N = r"(\d{1,3}(?: \d{3})*)"  # the PDF prints 149 852 for 149,852
+
+
+def male_female_both(text):
+    """'61 122 88 730 149 852' -> the one split into three numbers where male + female = both."""
+    t = text.split()
+    for i in range(1, len(t) - 1):
+        for j in range(i + 1, len(t)):
+            parts = [t[:i], t[i:j], t[j:]]
+            if all(len(p[0]) <= 3 and all(len(x) == 3 for x in p[1:]) for p in parts):
+                m, f, b = (int("".join(p)) for p in parts)
+                if m + f == b:
+                    return m, f, b
+
+
+for label, measure in (("Number of new cancer cases", "incidence"), ("Number of cancer deaths", "mortality"),
+                       ("5-year prevalent cases", "prevalence_5y")):
+    published = male_female_both(re.search(label + r" ([\d ]+)\n", page1)[1])
+    got = tuple(gco[(measure, s, "39")] for s in ("Male", "Female", "Both Sexes"))
+    expect(published == got, f"GLOBOCAN {measure} by sex: published {published}, clean {got}")
+for label, measure in (("Age-standardized incidence rate", "incidence"), ("Age-standardized mortality rate", "mortality")):
+    published = tuple(map(float, re.search(label + r" ([\d. ]+)\n", page1)[1].split()))
+    got = tuple(round(asr[(measure, s)], 1) for s in ("Male", "Female", "Both Sexes"))
+    expect(published == got, f"GLOBOCAN {measure} ASR by sex: published {published}, clean {got}")
+
+cancers = json.loads((DATA / "raw/iarc/globocan-2024/cancers.json").read_text())
+norm = lambda s: s.lower().replace(",", "")
+codes = {norm(c[k]): (str(c["cancer"]),) for c in cancers for k in ("label", "short_label")}
+codes |= {"colorectum": ("8", "9", "10"), "melanoma": ("16",), "brain cns": ("31",), "all cancers excl. nmsc": ("40",)}
+site_rows = 0
+for line in page2.splitlines():
+    m = (re.match(rf"^(.+?) {N} \d+ [\d.]+ [\d.]+ {N} \d+ [\d.]+ [\d.]+ {N} \d+\.\d+$", line)
+         or re.match(rf"^(All cancers.*?) {N} - - [\d.]+ {N} - - [\d.]+ {N} -$", line))
+    if not m:
+        continue
+    site_rows += 1
+    for measure, value in zip(("incidence", "mortality", "prevalence_5y"), m.groups()[1:]):
+        got = sum(gco[(measure, "Both Sexes", c)] for c in codes[norm(m[1])])
+        expect(got == int(value.replace(" ", "")), f"GLOBOCAN {m[1]} {measure}: published {value}, clean {got}")
+expect(site_rows == 34, f"GLOBOCAN fact sheet: parsed {site_rows} site rows, expected 34")
+
+for (measure, s, code), v in gco.items():
+    if s == "Both Sexes":
+        parts = [gco[(measure, x, code)] for x in ("Male", "Female") if (measure, x, code) in gco]
+        expect(sum(parts) == v, f"GLOBOCAN {measure} {code}: male + female {sum(parts)}, both {v}")
+    if code == "37+38":
+        expect(v >= 0, f"GLOBOCAN {measure} {s}: itemised sites exceed all cancers by {-v}")
+
 print(f"{len(deaths)} death cells ({', '.join(map(str, sorted({k[0] for k in deaths})))}), "
-      f"{checked} matched cell-by-cell against PSA 2024 Table 12, {len(pop)} population cells")
+      f"{checked} matched cell-by-cell against PSA 2024 Table 12, {len(pop)} population cells, "
+      f"{len(gco)} GLOBOCAN cells ({site_rows} fact-sheet rows matched)")
 if failures:
     print(f"\n{len(failures)} FAILED", *failures[:25], sep="\n  ")
     sys.exit(1)

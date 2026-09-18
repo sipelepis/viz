@@ -1,12 +1,13 @@
 # data
 
-Ground truths for the viz projects: source files as published, tidy tables derived from
+Ground truths for the viz projects: source files as published (PSA, IARC), tidy tables derived from
 them, and checks that tie every derived number back to the publisher's own figures.
 
 ```
-python3 data/fetch_psa.py            # snapshot PSA OpenSTAT, write clean/*.csv
-python3 data/fetch_psa.py --offline  # rebuild clean/ from the committed snapshots
-python3 data/check.py                # verify clean/ against PSA's published tables (needs openpyxl)
+python3 data/fetch_psa.py        # PSA OpenSTAT → raw/psa/openstat, clean/{neoplasm_deaths,population}.csv
+python3 data/fetch_globocan.py   # IARC GLOBOCAN → raw/iarc, clean/globocan.csv
+python3 data/check.py            # verify clean/ against the published tables (needs openpyxl, pypdf)
+# either fetch script with --offline rebuilds clean/ from the committed snapshots
 ```
 
 | Path | Rule |
@@ -23,6 +24,10 @@ python3 data/check.py                # verify clean/ against PSA's published tab
   - Neoplasms: **77,504**, split into **34,639** male and **42,865** female. Neoplasms are the #2 cause of death overall and the #2 among women.
 - **Cell by cell.** All 18,920 neoplasm cells for 2024 (region × cause × age × sex) equal PSA 2024 statistical Table 12.
 - **Arithmetic, 2023 and 2024.** Site groups sum to 1-026 Neoplasms. Male plus female equals both sexes. Age groups sum to the total. Regions plus "foreign country" sum to the national figure. Every year has the all-causes total and all 22 neoplasm groups.
+- **GLOBOCAN.** The API snapshot equals IARC's published fact sheet PDF:
+  - new cases, deaths and 5-year prevalence by sex, plus age-standardised rates;
+  - every row of the per-site table (32 sites plus the two all-cancers totals).
+  Male plus female equals both sexes, and the itemised sites never exceed all cancers.
 - **Population.** The 18 regions sum to the national total, less **1,708** Filipinos in embassies and missions abroad (PSA footnote a/). Age groups sum to each region's total. Both census tables agree on household population.
 
 Derived, for orientation:
@@ -44,6 +49,40 @@ The top sites in 2024 were:
 The "remainder of malignant neoplasms" group (10,575 deaths) is larger than any site except breast.
 
 ## Sources
+
+### IARC GLOBOCAN 2024 (incidence, prevalence, modelled mortality)
+
+| File | What |
+| --- | --- |
+| `raw/iarc/globocan-2024/factsheet.json` | `gco-api.iarc.fr/api/globocan/v3/2024/factsheet/population/608/`: incidence, mortality and 5-year prevalence by site × sex. Gives count, ASR (World), crude rate, cumulative risk to 74, and rank. |
+| `raw/iarc/globocan-2024/cancers.json` | Site codes, labels and ICD-10 ranges (`meta/cancers/all/`). |
+| `raw/iarc/globocan-2024/fact-sheet.pdf` | IARC's Philippines fact sheet (GLOBOCAN 2024, July 2026); source for the check. |
+
+The 2024 headline figures are:
+
+| Measure | Both sexes | Male | Female |
+| --- | --- | --- | --- |
+| New cases | 149,852 | 61,122 | 88,730 |
+| Deaths | 86,338 | 41,225 | 45,113 |
+| 5-year prevalence | 352,713 | 124,773 | 227,940 |
+
+The top incident cancers are:
+
+1. Breast: 28,124
+2. Colorectum: 17,462
+3. Lung: 15,312
+4. Prostate: 9,195
+5. Liver: 8,638
+
+Read before using:
+
+- **Estimates, not counts.** Incidence is modelled from the Manila and Rizal registries (2000–2017), applied to the national 2024 population. Mortality is WHO national rates for 2010–2019, projected to 2024. Prevalence uses Nordic incidence-to-prevalence ratios scaled by HDI.
+- **Not comparable with PSA.** GLOBOCAN's 86,338 modelled deaths and PSA's 77,504 registered neoplasm deaths measure different things. The 11% gap reflects under-registration and ill-defined causes as much as anything, so show them side by side only with that caveat.
+- **One edition only.** Editions change method; 2022 estimated 188,976 cases against 2024's 149,852. Never draw a trend across editions, which is why only 2024 is kept.
+- **Other and unspecified sites.** The fact sheet itemises sites 1–36 only. `clean/globocan.csv` adds a derived row, `37+38` "Other and unspecified sites", holding the remainder, so each measure × sex sums to all cancers. That's 12,486 of the new cases.
+- **Colon, rectum and anus.** These stay separate (codes 8, 9, 10); the fact sheet's "Colorectum" is their sum.
+- **Licence.** © IARC, all rights reserved; cite IARC's Global Cancer Observatory (GLOBOCAN 2024). Keep this repo private, or drop `raw/iarc/`, before publishing it.
+- **No age or regional split.** I couldn't find an age breakdown in the API; its `data/` endpoint returned only population projections. Regional incidence doesn't exist in GLOBOCAN at all.
 
 ### PSA: civil registration (deaths)
 
@@ -76,6 +115,9 @@ Things to know before charting:
   - `region_code` is the PSGC code, `PH` for national or `foreign`.
   - `cause_code` is a Tabulation List 1 code, or `total` for all causes.
 - `population.csv` has columns `year, region_code, region, measure, age_group, sex, value`.
+- `globocan.csv` has columns `year, measure, sex, cancer_code, cancer, icd10, count, asr_world, crude_rate, cum_risk_74, rank`.
+  - `measure` is one of `incidence`, `mortality` or `prevalence_5y`.
+  - `cancer_code` 39 is all cancers and 40 is all cancers excluding non-melanoma skin cancer.
 
 ## Next sources (not fetched yet)
 
@@ -83,14 +125,13 @@ Surveyed 2026-09-18, in fetch order. ✓ means the URL was verified to respond; 
 
 | # | Source | Gives | Format | Notes |
 | --- | --- | --- | --- | --- |
-| 1 | GLOBOCAN (IARC) ✓ `gco-api.iarc.fr/api/globocan/v3/{2024,2022}/factsheet/population/608/` | **Incidence**, mortality and 5-year prevalence by site × sex: counts, ASR, crude rate | JSON (undocumented API) | These are modelled estimates, not registry counts; 2024 gives 149,852 new cases. Licence: IARC terms, attribution required. Its mortality is also modelled, so it won't match PSA's registered deaths. |
-| 2 | PhilHealth accredited cancer treatment facilities ✓ `philhealth.gov.ph/partners/providers/facilities/accredited/CTF_MMDDYY.pdf` | 16 freestanding centres: name, contact, address, sector, accreditation expiry | PDF table | Re-issued monthly and the filename changes. The same folder holds HOSP (all hospitals) and CancerScreening. |
-| 3 | PhilHealth Z Benefit contracted facilities ✓ `…/facilities/contracted/YYYYMMDD_Contracted ZBEN_forweb.pdf` | Facilities contracted per package: childhood ALL, breast, prostate, cervical, colon, rectum | PDF, one table per package | Package amounts are only in circulars, as prose. |
-| 4 | PROS radiation oncology `pros.org.ph/facilities/` | Hospitals with radiation oncology, by region | HTML table | Society list, not official. |
-| 5 | DOH NHFR `nhfr.doh.gov.ph/VActivefacilitiesList` | Every licensed facility: code, type, ownership, service capability, beds | Excel export in the UI | Cloudflare blocks scripts, so export by hand in a browser. |
-| 6 | DOH HFSRB `hfsrb.doh.gov.ph/cancer-treatment-facility/` | National list of licensed cancer treatment facilities | Unknown | Cloudflare-blocked, so check by hand. The CALABARZON regional sheet has been deleted (HTTP 410). |
-| 7 | PCS / Rizal cancer registry reports `philcancer.org.ph/…/local-publications` | Historical registry incidence for Manila and Rizal | PDF | Only by extracting tables. |
-| 8 | DOH-designated cancer centres (PCC) and Cancer Assistance Fund access sites | 24 designated centres; 36 CAF sites | Prose or news only | Compile by hand. |
+| 1 | PhilHealth accredited cancer treatment facilities ✓ `philhealth.gov.ph/partners/providers/facilities/accredited/CTF_MMDDYY.pdf` | 16 freestanding centres: name, contact, address, sector, accreditation expiry | PDF table | Re-issued monthly and the filename changes. The same folder holds HOSP (all hospitals) and CancerScreening. |
+| 2 | PhilHealth Z Benefit contracted facilities ✓ `…/facilities/contracted/YYYYMMDD_Contracted ZBEN_forweb.pdf` | Facilities contracted per package: childhood ALL, breast, prostate, cervical, colon, rectum | PDF, one table per package | Package amounts are only in circulars, as prose. |
+| 3 | PROS radiation oncology `pros.org.ph/facilities/` | Hospitals with radiation oncology, by region | HTML table | Society list, not official. |
+| 4 | DOH NHFR `nhfr.doh.gov.ph/VActivefacilitiesList` | Every licensed facility: code, type, ownership, service capability, beds | Excel export in the UI | Cloudflare blocks scripts, so export by hand in a browser. |
+| 5 | DOH HFSRB `hfsrb.doh.gov.ph/cancer-treatment-facility/` | National list of licensed cancer treatment facilities | Unknown | Cloudflare-blocked, so check by hand. The CALABARZON regional sheet has been deleted (HTTP 410). |
+| 6 | PCS / Rizal cancer registry reports `philcancer.org.ph/…/local-publications` | Historical registry incidence for Manila and Rizal | PDF | Only by extracting tables. |
+| 7 | DOH-designated cancer centres (PCC) and Cancer Assistance Fund access sites | 24 designated centres; 36 CAF sites | Prose or news only | Compile by hand. |
 
 Checked and parked:
 
