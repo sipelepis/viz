@@ -6,6 +6,7 @@ them, and checks that tie every derived number back to the publisher's own figur
 ```
 python3 data/fetch_psa.py        # PSA OpenSTAT → raw/psa/openstat, clean/{neoplasm_deaths,population}.csv
 python3 data/fetch_globocan.py   # IARC GLOBOCAN → raw/iarc, clean/globocan.csv
+python3 data/fetch_survival.py   # published survival studies → raw/survival, clean/survival.csv
 python3 data/check.py            # verify clean/ against the published tables (needs openpyxl, pypdf)
 # either fetch script with --offline rebuilds clean/ from the committed snapshots
 ```
@@ -17,7 +18,12 @@ python3 data/check.py            # verify clean/ against the published tables (n
 
 ## Ground truths
 
-`check.py` passes only if all of these hold:
+`check.py` passes only if all of these hold. Each run writes `clean/validation.json` with:
+- every check: what it compared against, how many assertions it made, and any failures;
+- the sources, with their retrieval dates;
+- a SHA-256 of each clean CSV.
+
+The data build runs the checks in `--report-only` mode, so a failure is recorded rather than breaking the build; `nx run @viz/data:check` stays strict. The app's MCP tool `data_validation` re-hashes the files it serves. It calls the data verified only if every check passed and nothing changed since, and the dashboard shows readers that verdict.
 
 - **Published headlines.** Deaths from all causes and from neoplasms, by sex, equal PSA 2024 textual Table 10.
   - All causes: **701,884**.
@@ -28,6 +34,7 @@ python3 data/check.py            # verify clean/ against the published tables (n
   - new cases, deaths and 5-year prevalence by sex, plus age-standardised rates;
   - every row of the per-site table (32 sites plus the two all-cancers totals).
   Male plus female equals both sexes, and the itemised sites never exceed all cancers.
+- **Survival.** Adult figures equal Redaniel 2009 Table 2. The table's own "Difference" columns match the gaps between its value columns, and the paper's text agrees: thyroid is highest (82.4) and leukaemia lowest (5.2). Each of the six childhood figures from Rosario 2025 is restated in that paper's discussion, and each table's events plus censored cases add up to its total.
 - **Population.** The 18 regions sum to the national total, less **1,708** Filipinos in embassies and missions abroad (PSA footnote a/). Age groups sum to each region's total. Both census tables agree on household population.
 
 Derived, for orientation:
@@ -84,6 +91,25 @@ Read before using:
 - **Licence.** © IARC, all rights reserved; cite IARC's Global Cancer Observatory (GLOBOCAN 2024). Keep this repo private, or drop `raw/iarc/`, before publishing it.
 - **No age or regional split.** I couldn't find an age breakdown in the API; its `data/` endpoint returned only population projections. Regional incidence doesn't exist in GLOBOCAN at all.
 
+### Survival (published studies, Metro Manila only)
+
+The Philippines has no data in CONCORD-3 (the registry couldn't be linked to death records) or in SURVCAN-3. These two papers are the population-based survival figures that exist. Both use the Manila and Rizal cancer registries.
+
+| File | What |
+| --- | --- |
+| `raw/survival/redaniel-2009-bjc.xml` | Redaniel et al., *Br J Cancer* 2009;100:858, doi:10.1038/sj.bjc.6604945 (CC BY 4.0), from PMC. Table 2 gives 5-year relative survival, age-standardised by period analysis, for diagnoses in 1998–2002. It covers 9 sites and three populations: Metro Manila residents, Filipino-Americans and Caucasians (both US SEER). |
+| `raw/survival/rosario-2025-pjo.pdf` | Rosario et al., *Philippine Journal of Oncology* 2025;1(1):e004. Gives 5-year observed survival for ages 0–19, diagnosed 2006–2017, for six childhood cancers. Licence not stated; keep the repo private. |
+
+Read before using:
+
+- **Old, and Metro Manila only.** The adult figures are over 20 years old, and nothing population-based is newer. Neither study covers the whole country.
+- **Follow-up gaps.** Only 41.6% of the adults not matched to a death certificate had complete 5-year follow-up, which probably overstates survival. Among the children, 54–79% of each group was censored (lost to follow-up). The paper gives some childhood values only as upper bounds, which the `bound` column marks with `≤`.
+- **Different methods.**
+  - The adult figures are relative survival (Ederer II, local life table), not CONCORD's net survival.
+  - The children's figures are observed, all-cause survival.
+  - Don't compare across the two studies, or with CONCORD.
+- **No sex split** in either study.
+
 ### PSA: civil registration (deaths)
 
 | File | What |
@@ -115,6 +141,9 @@ Things to know before charting:
   - `region_code` is the PSGC code, `PH` for national or `foreign`.
   - `cause_code` is a Tabulation List 1 code, or `total` for all causes.
 - `population.csv` has columns `year, region_code, region, measure, age_group, sex, value`.
+- `survival.csv` has columns `source, population, place, period, age, site, measure, pct, bound, se, cases, censored_pct`.
+  - `age` is `adults` or `0-19`.
+  - `bound` is `≤` where the paper gives only an upper bound.
 - `globocan.csv` has columns `year, measure, sex, cancer_code, cancer, icd10, count, asr_world, crude_rate, cum_risk_74, rank`.
   - `measure` is one of `incidence`, `mortality` or `prevalence_5y`.
   - `cancer_code` 39 is all cancers and 40 is all cancers excluding non-melanoma skin cancer.

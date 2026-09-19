@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Ground-truth checks: the tidy CSVs in clean/ must agree with the publishers' own publications (PSA, IARC)
-and add up internally. Exits non-zero on any mismatch.
+"""Ground-truth checks: the tidy CSVs in clean/ must agree with the publishers' own publications (PSA, IARC,
+the survival papers) and add up internally. Writes clean/validation.json: every check, what it was compared
+against, its result, and a SHA-256 of each verified file so whoever serves the data can prove it's unchanged.
 
-    python3 data/check.py    (needs openpyxl and pypdf for the published workbooks/PDFs)
+    python3 data/check.py                # exits non-zero on any mismatch
+    python3 data/check.py --report-only  # always exits 0; the report carries the verdict (used by the build)
+
+Needs openpyxl and pypdf for the published workbooks/PDFs.
 """
 import csv
+import hashlib
 import json
 import re
 import sys
 from collections import defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 
 import openpyxl
@@ -17,12 +23,18 @@ import pypdf
 DATA = Path(__file__).parent
 PSA_2024 = DATA / "raw/psa/2024-deaths"
 SITES = [f"1-0{n}" for n in range(27, 48)]  # the 21 site groups under 1-026 Neoplasms
-failures = []
+checks = []
+
+
+def check(id, title, against):
+    """Start a named check; the expect() calls that follow belong to it."""
+    checks.append({"id": id, "title": title, "against": against, "assertions": 0, "failures": []})
 
 
 def expect(ok, msg):
+    checks[-1]["assertions"] += 1
     if not ok:
-        failures.append(msg)
+        checks[-1]["failures"].append(msg)
 
 
 def load(name):
@@ -38,6 +50,7 @@ rows = load("neoplasm_deaths")
 deaths = {(int(r["year"]), r["region_code"], r["cause_code"], r["age_group"], r["sex"]): int(r["deaths"]) for r in rows}
 names_2024 = {r["region"].upper(): r["region_code"] for r in rows if r["year"] == "2024"}
 
+check("psa-headlines", "PSA headline figures", "PSA 2024 Deaths, textual Table 10 (ten leading causes by sex)")
 # 1. Headline figures in PSA's 2024 textual tables (Table 10, ten leading causes by sex).
 sex = None
 for row in sheet("textual-tables.xlsx", "Table10"):
@@ -48,6 +61,7 @@ for row in sheet("textual-tables.xlsx", "Table10"):
         got = deaths[(2024, "PH", "total" if label.startswith("All") else "1-026", "Total", sex)]
         expect(got == row[1], f"Table 10 {label} {sex}: published {row[1]}, clean {got}")
 
+check("psa-table12", "Every cancer death cell, 2024", "PSA 2024 Deaths, statistical Table 12 (region × cause × age × sex)")
 # 2. Every neoplasm cell of PSA 2024 statistical Table 12 (region x cause x age x sex).
 t12 = sheet("statistical-tables.xlsx", "T12")
 ages = [re.sub(r"\s*-\s*", "-", a).replace(" Over", " over") for a in t12[1][4::2]]
@@ -69,6 +83,7 @@ for row in t12[4:]:
 expected = 20 * 22 * (3 + 2 * len(ages))  # national + 18 regions + foreign, 1-026 + 21 sites
 expect(checked == expected, f"T12: compared {checked} cells, expected {expected}")
 
+check("psa-arithmetic", "Death totals add up, 2023 and 2024", "Internal: sites, sexes, age groups and regions sum to their totals")
 # 3. Internal arithmetic, both years: sites -> neoplasms, male + female -> both,
 #    age groups -> total, regions (+ foreign) -> national.
 for y in {k[0] for k in deaths}:
@@ -90,6 +105,7 @@ for label, sums in (("age groups", age_sum), ("regions", region_sum)):
     for k, v in sums.items():
         expect(v == deaths[k], f"{k}: {label} sum to {v}, total {deaths[k]}")
 
+check("population", "Census population adds up", "PSA 2024 Census of Population (incl. footnote a/ on Filipinos abroad)")
 # 4. Population: regions add up to the national count, age groups to the region total,
 #    and the two census tables agree on household population.
 pop = {}
@@ -111,6 +127,7 @@ for (reg, measure, a, s), v in pop.items():
 for k, v in by_age.items():
     expect(v == pop[k], f"population {k}: age groups sum to {v}, total {pop[k]}")
 
+check("globocan", "GLOBOCAN estimates match IARC", "IARC GLOBOCAN 2024 Philippines fact sheet (PDF)")
 # 5. GLOBOCAN 2024: the API snapshot equals IARC's published fact sheet (PDF), and adds up.
 gco = {(r["measure"], r["sex"], r["cancer_code"]): int(r["count"]) for r in load("globocan")}
 asr = {(r["measure"], r["sex"]): float(r["asr_world"]) for r in load("globocan") if r["cancer_code"] == "39"}
@@ -163,10 +180,73 @@ for (measure, s, code), v in gco.items():
     if code == "37+38":
         expect(v >= 0, f"GLOBOCAN {measure} {s}: itemised sites exceed all cancers by {-v}")
 
+check("survival", "Survival figures match the papers", "Redaniel 2009 (Br J Cancer) Table 2 and text; Rosario 2025 (Philipp J Oncol) tables and text")
+# 6. Survival: clean/survival.csv equals the two papers, and each paper agrees with itself.
+import fetch_survival as fs  # noqa: E402 (same directory; reuses its table readers)
+
+surv = load("survival")
+got = {(r["age"], r["population"], r["site"]): float(r["pct"]) for r in surv}
+table = fs.table2()
+expect(len(table) == 9, f"Redaniel Table 2: {len(table)} sites, expected 9")
+for row in table:
+    (v1, v2, v3), (d1, d2) = row["values"], row["diffs"]
+    # The published "Difference" columns are (2)-(1) and (3)-(2); a misread column breaks this.
+    expect(abs(v2 - v1 - d1) < 0.15 and abs(v3 - v2 - d2) < 0.15, f"Redaniel {row['site']}: differences don't add up")
+    for population, v in zip(fs.POPULATIONS, row["values"]):
+        expect(got.get(("adults", population, row["site"])) == v, f"Redaniel {row['site']} {population}: clean differs")
+ph = {site: v for (age, population, site), v in got.items() if age == "adults" and population == fs.POPULATIONS[0]}
+# The paper's text: thyroid highest (82.4) and leukaemia lowest (5.2) among Philippine residents.
+expect((max(ph, key=ph.get), ph.get("Thyroid")) == ("Thyroid", 82.4), "Redaniel: thyroid is not the highest at 82.4")
+expect((min(ph, key=ph.get), ph.get("Leukaemia")) == ("Leukaemia", 5.2), "Redaniel: leukaemia is not the lowest at 5.2")
+
+kids = fs.children()
+prose = " ".join(fs.child_pdf_text().split())
+expect(len(kids) == 6, f"Rosario: {len(kids)} cancer tables, expected 6")
+for k in kids:
+    expect(int(k["events"]) + int(k["censored"]) == int(k["cases"]), f"Rosario {k['site']}: events + censored != cases")
+    expect(round(100 * int(k["censored"]) / int(k["cases"]), 1) == float(k["censored_pct"]),
+           f"Rosario {k['site']}: censored % doesn't match its counts")
+    # The discussion restates each table's 5-year survival, e.g. "Burkitt's lymphoma (16.7%)".
+    expect(re.search(rf"(?i){re.escape(k['site'].split()[0][:7])}.{{0,24}}\({re.escape(k['pct'])}%", prose),
+           f"Rosario {k['site']}: {k['pct']}% not restated in the text")
+    expect(got.get(("0-19", fs.POPULATIONS[0], k["site"][0].upper() + k["site"][1:])) == float(k["pct"]),
+           f"Rosario {k['site']}: clean differs")
+
 print(f"{len(deaths)} death cells ({', '.join(map(str, sorted({k[0] for k in deaths})))}), "
       f"{checked} matched cell-by-cell against PSA 2024 Table 12, {len(pop)} population cells, "
-      f"{len(gco)} GLOBOCAN cells ({site_rows} fact-sheet rows matched)")
+      f"{len(gco)} GLOBOCAN cells ({site_rows} fact-sheet rows matched), {len(surv)} survival rows")
+
+
+def fetched(path):
+    return json.loads((DATA / path).read_text()).get("fetched")
+
+
+failures = [f for c in checks for f in c["failures"]]
+report = {
+    "status": "fail" if failures else "pass",
+    "checked_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    "checks": [{**c, "passed": not c["failures"], "failures": c["failures"][:20]} for c in checks],
+    # The server re-hashes these before serving; any edit after this check shows as unverified.
+    "files": {p.name: hashlib.sha256(p.read_bytes()).hexdigest() for p in sorted((DATA / "clean").glob("*.csv"))},
+    "sources": [
+        {"name": "PSA OpenSTAT: registered deaths by region, cause, age and sex, 2023 and 2024",
+         "retrieved": fetched("raw/psa/openstat/deaths_cause_2024.json"), "url": "https://openstat.psa.gov.ph"},
+        {"name": "PSA 2024 Deaths statistical and textual tables (revision of 2026-02-23)", "retrieved": None,
+         "url": "https://psa.gov.ph/statistics/vital-statistics"},
+        {"name": "PSA 2024 Census of Population (OpenSTAT)",
+         "retrieved": fetched("raw/psa/openstat/population_2024.json"), "url": "https://openstat.psa.gov.ph"},
+        {"name": "IARC GLOBOCAN 2024, Philippines", "retrieved": fetched("raw/iarc/globocan-2024/factsheet.json"),
+         "url": "https://gco.iarc.who.int/today"},
+        {"name": "Redaniel et al., Br J Cancer 2009 (adult survival, CC BY 4.0)", "retrieved": None,
+         "url": "https://doi.org/10.1038/sj.bjc.6604945"},
+        {"name": "Rosario et al., Philippine Journal of Oncology 2025 (childhood survival)", "retrieved": None,
+         "url": "https://www.philsoconc.org/post/population-based-5-year-cancer-survival-study-2006-2017-among-filipino-pediatric-cancer-patients"},
+    ],
+}
+(DATA / "clean" / "validation.json").write_text(json.dumps(report, indent=1, ensure_ascii=False) + "\n")
+for c in checks:
+    print(f"  {'ok  ' if not c['failures'] else 'FAIL'} {c['title']}: {c['assertions']:,} assertions")
 if failures:
     print(f"\n{len(failures)} FAILED", *failures[:25], sep="\n  ")
-    sys.exit(1)
+    sys.exit(0 if "--report-only" in sys.argv else 1)
 print("all ground-truth checks passed")

@@ -1,4 +1,12 @@
 node_modules
 dist
+out-tsc
 *:Zone.Identifier
 data/clean
+
+.nx/cache
+.nx/workspace-data
+.nx/migrate-runs
+vite.config.*.timestamp*
+__pycache__
+*.tsbuildinfo

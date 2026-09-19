@@ -1,0 +1,33 @@
+{
+  "name": "@viz/data",
+  "private": true,
+  "scripts": {
+    "build": "python3 fetch_psa.py --offline && python3 fetch_globocan.py --offline && python3 fetch_survival.py --offline && python3 check.py --report-only",
+    "fetch": "python3 fetch_psa.py && python3 fetch_globocan.py && python3 fetch_survival.py",
+    "check": "python3 check.py"
+  },
+  "nx": {
+    "targets": {
+      "build": {
+        "inputs": [
+          "{projectRoot}/*.py",
+          "{projectRoot}/raw/**/*"
+        ],
+        "outputs": [
+          "{projectRoot}/clean"
+        ],
+        "cache": true
+      },
+      "check": {
+        "dependsOn": [
+          "build"
+        ],
+        "inputs": [
+          "{projectRoot}/*.py",
+          "{projectRoot}/raw/**/*"
+        ],
+        "cache": true
+      }
+    }
+  }
+}

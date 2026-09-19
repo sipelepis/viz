@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "viz-cancer": {
+      "command": "node",
+      "args": ["apps/cancer/server/stdio.ts"]
+    }
+  }
+}

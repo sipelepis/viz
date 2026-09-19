@@ -85,7 +85,7 @@ def region(code, label):
         return "PH", "Philippines"
     if code == "9999999999":
         return "foreign", "Foreign country"
-    return code, label.lstrip(". ")
+    return code, re.sub(r"\s+(?:\d+/|\*+)$", "", label.lstrip(". "))  # drop footnote marks such as " 3/"
 
 
 def age(label):

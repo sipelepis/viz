@@ -1,0 +1,35 @@
+{
+  "name": "cancer",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@react-three/drei": "^10.7.8",
+    "@react-three/fiber": "^9.7.0",
+    "@viz/data": "workspace:^",
+    "@viz/design-system": "workspace:^",
+    "three": "^0.186.0",
+    "zod": "^4.6.5"
+  },
+  "scripts": {
+    "test": "node --test server/*.test.ts",
+    "models": "node scripts/build-body-models.mjs"
+  },
+  "nx": {
+    "targets": {
+      "test": {
+        "dependsOn": [
+          "^build"
+        ]
+      }
+    }
+  },
+  "devDependencies": {
+    "@gltf-transform/core": "^4.5.0",
+    "@gltf-transform/extensions": "^4.5.0",
+    "@gltf-transform/functions": "^4.5.0",
+    "@types/three": "^0.186.0",
+    "meshoptimizer": "^1.2.0"
+  }
+}
