@@ -157,7 +157,8 @@ main {
 }
 .bars-head { margin-bottom: 4px; }
 .bars-label { font-size: 13px; line-height: 1.3; }
-.bars-track {
+.bars-track,
+.bars-foot-track {
   height: 28px;
   padding-right: 64px; /* room for the value at the tip of the longest bar */
   border-left: 1px solid var(--line);
@@ -168,6 +169,7 @@ main {
 .bars-bar {
   height: 14px;
   min-width: 2px;
+  flex: none; /* a full-scale bar must not shrink to make room for its value */
   border-radius: 0 4px 4px 0;
   background: var(--ink);
   /* grows from the baseline in a quick wave on reveal, and glides when a filter changes it */
@@ -193,7 +195,7 @@ main {
   width: 1px;
   background: var(--muted);
 }
-.bars-foot .bars-track { height: 20px; border-left-color: transparent; }
+.bars-foot .bars-foot-track { height: 20px; border-left-color: transparent; }
 .bars-ref-label { position: absolute; top: 2px; transform: translateX(-50%); white-space: nowrap; }
 
 .tooltip {
@@ -260,3 +262,13 @@ dialog.mcp-dialog { width: min(720px, calc(100vw - 32px)); max-width: none; over
 .mcp-tools li:last-child { border-bottom: 0; }
 .mcp-tool-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .mcp-tool-head code { font: 500 12px/1.4 var(--font-mono); padding: 2px 6px; }
+
+/* Education sections */
+.chart-notes { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.studies { display: grid; gap: 16px; margin: 12px 0; }
+.study { display: grid; gap: 6px; padding-top: 16px; border-top: 1px solid var(--line); }
+.study h3 { font: 600 16px/1.3 var(--font-ui); margin: 0; }
+.stat { margin: 0; font: 600 28px/1.1 var(--font-ui); letter-spacing: -0.01em; }
+.employer-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; margin: 12px 0; }
+.employer-grid .card { display: grid; gap: 6px; align-content: start; }
+.employer-grid .card p { margin: 0; }

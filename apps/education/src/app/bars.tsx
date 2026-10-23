@@ -59,7 +59,7 @@ export function Bars({ rows, columns, format, reference, caption, rowHeader = ''
       {reference && (
         <div className="bars-row bars-foot" aria-hidden="true">
           <span />
-          <div className="bars-track">
+          <div className="bars-foot-track">
             <div className="bars-plot">
               <span className="bars-ref-label caption" style={{ left: pct(reference.value) }}>{reference.label}</span>
             </div>
