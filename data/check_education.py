@@ -87,6 +87,30 @@ def snap_json(name):
 check("lfs-headlines", "LFS headline rates match Table A-1",
       "PSA LFS press release, Table A-1 (and Table A precision), and the OpenSTAT key-rates snapshot")
 # 1. Every Table A-1 cell is in labour_rates.csv with the same value and status.
+# The OpenSTAT key-rates cells (both sexes) with a value; the snapshot's footnotes say which estimates are final.
+snap_rates = {}
+for d, v in fe.cells(snapshot("0021B3FKEI2")):
+    if dim(d, "Sex")[1].lower() != "both sexes" or v is None:
+        continue
+    y, mo = dim(d, "Year")[1], dim(d, "Month")[1]
+    period = y if mo == "Annual" else f"{y}-{MONTHS.index(mo) + 1:02d}"
+    snap_rates[(period, strip_marks(dim(d, "Rate")[1]).capitalize())] = v
+snap_notes = snap_json(snapshot("0021B3FKEI2")).get("notes", [])
+NOTE_STATUS = []  # (first month, last month, status) from notes such as "Estimates from April 2005 to August 2025 were final."
+for n in snap_notes:
+    m = re.search(r"Estimates from (\w+) (\d{4}) to (\w+) (\d{4}) were (final|preliminary)", n)
+    if m:
+        NOTE_STATUS.append((f"{m[2]}-{MONTHS.index(m[1]) + 1:02d}", f"{m[4]}-{MONTHS.index(m[3]) + 1:02d}", m[5]))
+expect(len(NOTE_STATUS) >= 1, "OpenSTAT key-rates notes carry no final/preliminary date range")
+
+
+def note_status(period):
+    """What the snapshot's notes say about a period; a year takes its December's status. Blank when no note covers it."""
+    month = f"{period}-12" if len(period) == 4 else period
+    found = {st for lo, hi, st in NOTE_STATUS if lo <= month <= hi}
+    return found.pop() if len(found) == 1 else ""
+
+
 a1 = fe.table_a1()
 expect(len(a1) > 0, "Table A-1: parsed no cells")
 expect({m for _, m in a1} == set(MEASURES), f"Table A-1 measures {sorted({m for _, m in a1})}")
@@ -102,18 +126,19 @@ for (period, measure), (value, status) in a1.items():
     got = rate.get((period, measure))
     expect(got is not None, f"Table A-1 {period} {measure}: no row in labour_rates.csv")
     if got:
-        expect(num(got["value"]) is not None and abs(num(got["value"]) - value) < EPS,
-               f"Table A-1 {period} {measure}: published {value}, clean {got['value']}")
+        expect(num(got["value"]) is not None and abs(num(got["value"]) - value) <= 0.05 + EPS,
+               f"Table A-1 {period} {measure}: published {value} (1 dp), clean {got['value']} does not round to it")
         expect(got["status"] == status, f"Table A-1 {period} {measure}: published status {status}, clean {got['status']!r}")
+        expect(note_status(period) in ("", status), f"Table A-1 {period} {measure}: flag {status}, snapshot notes say {note_status(period)}")
 years = sorted({p for p, _ in a1 if len(p) == 4})
 months = sorted({p for p, _ in a1 if len(p) == 7})
 expect(bool(years) and years[0] == "2019", f"Table A-1: annual figures start {years[:1]}, expected 2019")
 expect(bool(months), "Table A-1: no monthly figures")
 expect({(p, m) for p in years + months for m in MEASURES} == set(a1), "Table A-1: a period lacks one of the four rates")
-# Rows outside Table A-1 carry no status.
+# Rows outside Table A-1 carry the status the snapshot's notes give their month; none covered means blank.
 for (period, measure), r in rate.items():
     if (period, measure) not in a1:
-        expect(r["status"] == "", f"labour_rates {period} {measure}: status {r['status']!r} but not in Table A-1")
+        expect(r["status"] == note_status(period), f"labour_rates {period} {measure}: status {r['status']!r}, snapshot notes say {note_status(period)!r}")
 
 # The latest month in labour_rates.csv is the press release's own month (psa-lfs-press-release-YYYY-MM.pdf).
 release = [m[1] for n in fe.PINNED if (m := re.fullmatch(r"psa-lfs-press-release-(\d{4}-\d{2})\.pdf", n))]
@@ -133,13 +158,10 @@ for measure in MEASURES:
         r["period"] for r in mine if r["frequency"] == "month"), f"{measure}: last row is not its latest month")
     ms = sorted(r["period"] for r in mine if r["frequency"] == "month")
     ys = sorted(r["period"] for r in mine if r["frequency"] == "year")
-    if ms:
-        y0, m0 = 2005, 4
-        want = []
-        while f"{y0}-{m0:02d}" <= ms[-1]:
-            want.append(f"{y0}-{m0:02d}")
-            y0, m0 = (y0 + 1, 1) if m0 == 12 else (y0, m0 + 1)
-        expect(ms == want, f"{measure}: monthly rows are not contiguous from 2005-04 to {ms[-1]}")
+    # The LFS was quarterly until 2021: the months are exactly those the snapshot has a value for, from 2005-04.
+    want = sorted({p for (p, m) in snap_rates if m == measure and len(p) == 7 and p >= "2005-04"})
+    expect(ms == want, f"{measure}: monthly rows differ from the snapshot's months with a value: {sorted(set(ms) ^ set(want))[:6]}")
+    expect(bool(ms) and ms[0] == "2005-04", f"{measure}: first month {ms[:1]}, expected 2005-04")
     expect(bool(ys) and ys[0] == "2006" and ys == [str(y) for y in range(2006, int(ys[-1]) + 1)],
            f"{measure}: annual rows are not contiguous from 2006 ({ys[:1]}..{ys[-1:]})")
 
@@ -158,14 +180,7 @@ for (period, measure), r in rate.items():
     if r["ci_low"] != "":
         expect(num(r["ci_low"]) <= num(r["value"]) <= num(r["ci_high"]), f"labour_rates {period} {measure}: value outside its CI")
 
-# Every row is the OpenSTAT key-rates cell (both sexes), and every cell with a value is a row.
-snap_rates = {}
-for d, v in fe.cells(snapshot("0021B3FKEI2")):
-    if dim(d, "Sex")[1].lower() != "both sexes" or v is None:
-        continue
-    y, mo = dim(d, "Year")[1], dim(d, "Month")[1]
-    period = y if mo == "Annual" else f"{y}-{MONTHS.index(mo) + 1:02d}"
-    snap_rates[(period, strip_marks(dim(d, "Rate")[1]).capitalize())] = v
+# Every row is the OpenSTAT key-rates cell (both sexes).
 for k, v in snap_rates.items():
     r = rate.get(k)  # annual 2005 and months before 2005-04 are outside labour_rates by design
     expect(r is None or (num(r["value"]) is not None and abs(num(r["value"]) - v) < EPS),
