@@ -3,6 +3,10 @@
     "viz-cancer": {
       "command": "node",
       "args": ["apps/cancer/server/stdio.ts"]
+    },
+    "viz-education": {
+      "command": "node",
+      "args": ["apps/education/server/stdio.ts"]
     }
   }
 }

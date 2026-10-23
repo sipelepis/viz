@@ -1,0 +1,27 @@
+{
+  "name": "education",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@viz/data": "workspace:^",
+    "@viz/design-system": "workspace:^",
+    "zod": "^4.6.5"
+  },
+  "scripts": {
+    "test": "node --test server/*.test.ts"
+  },
+  "nx": {
+    "targets": {
+      "test": {
+        "dependsOn": [
+          {
+            "projects": ["@viz/data"],
+            "target": "build-education"
+          }
+        ]
+      }
+    }
+  }
+}
