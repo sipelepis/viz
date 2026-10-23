@@ -3,6 +3,8 @@ dist
 out-tsc
 *:Zone.Identifier
 data/clean
+data/clean-education
+data/download
 
 .nx/cache
 .nx/workspace-data

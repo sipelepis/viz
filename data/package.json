@@ -4,7 +4,10 @@
   "scripts": {
     "build": "python3 fetch_psa.py --offline && python3 fetch_globocan.py --offline && python3 fetch_survival.py --offline && python3 check.py --report-only",
     "fetch": "python3 fetch_psa.py && python3 fetch_globocan.py && python3 fetch_survival.py",
-    "check": "python3 check.py"
+    "check": "python3 check.py",
+    "build-education": "python3 fetch_education.py --offline && python3 check_education.py --report-only",
+    "check-education": "python3 check_education.py",
+    "fetch-education": "python3 fetch_education.py"
   },
   "nx": {
     "targets": {
@@ -27,6 +30,21 @@
           "{projectRoot}/raw/**/*"
         ],
         "cache": true
+      },
+      "build-education": {
+        "inputs": [
+          "{projectRoot}/*.py",
+          "{projectRoot}/raw/**/*"
+        ],
+        "outputs": [
+          "{projectRoot}/clean-education"
+        ],
+        "cache": true
+      },
+      "check-education": {
+        "dependsOn": [
+          "build-education"
+        ]
       }
     }
   }
