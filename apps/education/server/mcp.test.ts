@@ -51,7 +51,8 @@ test('labour_rates: a Table A-1 month equals the press release', async () => {
   const { rows } = await call('labour_rates', { measure: 'Unemployment rate', frequency: 'month', from: m, to: m });
   assert.equal(rows.length, 1);
   assert.equal(rows[0].period, m);
-  assert.equal(rows[0].value, a1.get(`${m}|Unemployment rate`)!.value);
+  const a1v = a1.get(`${m}|Unemployment rate`)!.value; // OpenSTAT has 3 decimals, Table A-1 prints 1
+  assert.ok(Math.abs(rows[0].value - a1v) <= 0.05 + 1e-9, `${m}: ${rows[0].value} vs Table A-1 ${a1v}`);
 });
 
 test('labour_rates: every Table A-1 cell for 2024 annual matches', async () => {
@@ -59,7 +60,8 @@ test('labour_rates: every Table A-1 cell for 2024 annual matches', async () => {
   const { rows } = await call('labour_rates', { frequency: 'year', from: '2024', to: '2024' });
   const by = Object.fromEntries(rows.map((r: { measure: string; value: number }) => [r.measure, r.value]));
   for (const m of ['Labor force participation rate', 'Employment rate', 'Unemployment rate', 'Underemployment rate']) {
-    assert.equal(by[m], a1.get(`2024|${m}`)!.value, m);
+    const a1v = a1.get(`2024|${m}`)!.value;
+    assert.ok(Math.abs(by[m] - a1v) <= 0.05 + 1e-9, `${m}: ${by[m]} vs Table A-1 ${a1v}`);
   }
 });
 

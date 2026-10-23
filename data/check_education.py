@@ -282,7 +282,9 @@ for table in ("0141B3FEMP7", "0151B3FUDR2"):
 check("sdg-completion", "Completion and survival rates match PSA's SDG Watch",
       "PSA SDG Watch Goal 4 (PDF) for the national rows; the OpenSTAT SDG 4 snapshots for every region")
 # 3. completion.csv is the OpenSTAT cells, and its national rows equal the SDG Watch PDF.
-# school_year ends in the calendar year the table labels it with (2016, or 2015-2016), the year PSA's SDG Watch uses.
+# school_year is OpenSTAT's / SDG Watch's Year label verbatim, and that label is the school year's FIRST calendar year
+# (footnote 4/: Senior High estimates started in SY 2018-2019, and the first Senior High label is 2018). end_year()
+# only reads the label (the trailing four digits); it does not convert a school year to its end year.
 LEVELS = {"Elementary": "Elementary", "Secondary (Junior High School)": "Junior high", "Secondary (Senior High School)": "Senior high"}
 SEXES = ("Both Sexes", "Male", "Female")
 INDICATORS = {"completion_rate": "0023I3C0412", "cohort_survival_rate": "0033I3C41S1"}
@@ -371,7 +373,7 @@ if all(head.values()):
     sections = {"completion_rate": text[c0:s0] if c0 < s0 else text[c0:],
                 "cohort_survival_rate": text[s0:s0 + after.start()] if after else text[s0:]}
     order = [(l, s) for l in LEVELS.values() for s in ("Both Sexes", "Female", "Male")]  # the PDF lists both, female, male
-    compared = {l: 0 for l in LEVELS.values()}
+    compared = {(l, i): 0 for l in LEVELS.values() for i in INDICATORS}
     for ind, section in sections.items():
         rows = sdg_rows(section)
         expect(len(rows) == 9, f"SDG Watch PDF {ind}: parsed {len(rows)} national rows, expected 9 (3 levels x 3 sexes)")
@@ -380,16 +382,16 @@ if all(head.values()):
                 have = got.get((year, "PH", lvl, sex, ind))
                 if have is None:
                     continue  # the table does not carry that school year
-                compared[lvl] += ind == "completion_rate"
+                compared[lvl, ind] += 1
                 expect(abs(have - value) < EPS, f"SDG Watch {ind} {lvl} {sex} {year}: published {value}, clean {have}")
-    for lvl, n in compared.items():
-        expect(n >= 1, f"SDG Watch PDF: no completion_rate comparison for {lvl}")
+    for (lvl, ind), n in compared.items():
+        expect(n >= 1, f"SDG Watch PDF: no {ind} comparison for {lvl}")
 
 # ---------------------------------------------------------------------------------------------------------
 check("published-figures", "Quoted figures appear in their sources",
       "World Bank PRWP 11163, PIDS Policy Note 2024-09, Melchor 2022 (Philippine Journal of Development)")
 # 4. Each quote that points at a committed paper occurs in that paper's text and contains its figure.
-EXPECTED = {  # id -> (value, kind, section or None where the spec leaves it open, checked_against)
+EXPECTED = {  # id -> (value, kind, section, checked_against)
     "wb-unemployment-college-25-34": (6.7, "published_estimate", "gap", "raw/education/wb-prwp-11163.pdf"),
     "wb-unemployment-less-25-34": (4.4, "published_estimate", "gap", "raw/education/wb-prwp-11163.pdf"),
     "wb-earnings-premium-2024": (80, "published_estimate", "gap", "raw/education/wb-prwp-11163.pdf"),
@@ -400,7 +402,7 @@ EXPECTED = {  # id -> (value, kind, section or None where the spec leaves it ope
     "jobstreet-alma-mater-2016": (62, "employer_self_report", "employers", ""),
     "jobstreet-2023-pup": (23, "employer_self_report", "employers", ""),
     "pbed-2024-college-share": (73, "employer_self_report", "employers", ""),
-    "melchor-2022-overeducated": (39, "study_estimate", None, "raw/education/melchor-2022-pjd.pdf"),
+    "melchor-2022-overeducated": (39, "study_estimate", "employers", "raw/education/melchor-2022-pjd.pdf"),
 }
 KINDS = {"published_estimate", "employer_self_report", "study_estimate"}
 

@@ -79,6 +79,7 @@ const checks = {
     eq(min, '0%', 'lowest y tick');
     const rule = await texts(page, '#trend .line-rule-label');
     assert(rule.length > 0 && rule.every((t) => t.length > 0), 'rule label empty or missing');
+    assert(rule.every((t) => t.includes('Jan 2021')), `rule label lacks 'Jan 2021': ${rule}`);
     assert(await page.locator('#trend line.line-rule').count() > 0, 'no line.line-rule');
     await page.locator('#trend .line-plot').focus();
     await page.keyboard.press('End');
@@ -92,11 +93,16 @@ const checks = {
       assert(tip.includes(last.ci_low.toFixed(1)) && tip.includes(last.ci_high.toFixed(1)), `tooltip lacks CI bounds: ${tip}`);
       kind = 'ci';
     } else {
-      assert(/(doesn.t|does not) publish .*precision/i.test(await text(page, '#trend')), 'no-CI caption missing');
+      const cap = await text(page, '#trend');
+      assert(/not shown yet/i.test(cap) && /Table A/.test(cap), `no-CI caption must say CIs are not shown yet and PSA publishes them in Table A: ${cap.slice(0, 300)}`);
       kind = 'no ci';
     }
+    const lastVal = () => page.locator('#trend tbody tr').last().locator('td').last().innerText();
+    const before = await lastVal();
     await radio(page, '#trend', 'Underemployment rate').click();
     await page.waitForFunction(() => /employed people/i.test([...document.querySelectorAll('#trend p.caption')].map((e) => e.textContent).join(' ')));
+    await page.waitForFunction(([b]) => { const tds = document.querySelectorAll('#trend tbody tr:last-child td'); return tds.length && tds[tds.length - 1].textContent.trim() !== b; }, [before.trim()]);
+    assert((await lastVal()).trim() !== before.trim(), `plotted series unchanged after switching to Underemployment: ${before}`);
     const hrefs = await page.locator('#trend a.source').evaluateAll((as) => as.map((a) => a.href));
     assert(hrefs.length > 0 && hrefs.every((h) => h.startsWith('https://openstat.psa.gov.ph')), `source links: ${hrefs}`);
     return ` (${kind})`;
@@ -159,7 +165,9 @@ const checks = {
     const links = await page.locator('#employers article.card').evaluateAll((cs) => cs.map((c) => c.querySelectorAll('a[href^=http]').length));
     links.forEach((n, i) => assert(n > 0, `card ${i} has no external link`));
     const t = await text(page, '#employers');
-    for (const s of ['77%', '71%', '62%', '23%', 'PUP', 'UP', '73%', '299', '39%']) assert(t.includes(s), `#employers lacks '${s}'`);
+    for (const s of ['77%', '71%', '62%', '23%', 'PUP', '73%', '299', '39%']) assert(t.includes(s), `#employers lacks '${s}'`);
+    const pupCard = cards.find((c) => c.includes('23%') && c.includes('PUP'));
+    assert(pupCard && (/\bUP\b/.test(pupCard) || pupCard.includes('University of the Philippines')), `no card with PUP's 23% and the UP half of the finding: ${pupCard}`);
     eq(await page.locator('#employers svg').count(), 0, 'svg count in #employers');
     assert(/what employers say, not what they do/i.test(t), 'no employer note');
   },
