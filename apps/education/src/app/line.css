@@ -1,0 +1,14 @@
+.line { margin: 0; }
+.line-plot { position: relative; border-radius: 8px; }
+.line-plot:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.line-svg { display: block; width: 100%; height: auto; touch-action: pan-y; }
+.line-y line { stroke: var(--line); stroke-width: 1; }
+.line-y text, .line-x text, .line-rule-label { fill: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.line-y text { text-anchor: end; }
+.line-x text { text-anchor: middle; }
+.line-band { fill: rgba(0, 0, 0, 0.08); stroke: none; }
+.line-path { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.line-rule { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 4 4; }
+.line-rule-label { text-anchor: start; }
+.line-cursor { stroke: rgba(0, 0, 0, 0.35); stroke-width: 1; }
+.line-cursor-dot { fill: var(--ink); stroke: #fff; stroke-width: 2; }
