@@ -330,24 +330,35 @@ text = "\n".join(p.extract_text() for p in pypdf.PdfReader(fe.pinned("psa-sdg-wa
 
 def sdg_rows(section):
     """[(baseline, latest, baseline_year, latest_year)] for each national value triple in the section, in print order.
-    A row is `<baseline> <latest> 100.0` then three years (baseline, latest, 2030); labels and sources may sit between."""
+    A row is `<baseline> <latest> <target>`, each value optionally followed by a revision flag (r or p), then three
+    years (baseline, latest, 2030); labels and sources may sit between. Targets are 100.0 or a revised figure."""
     toks = section.split()
+    dec = lambda t: re.fullmatch(r"\d+\.\d", t)
     out, i = [], 0
-    while i < len(toks) - 2:
-        if re.fullmatch(r"\d+\.\d", toks[i]) and re.fullmatch(r"\d+\.\d", toks[i + 1]) and toks[i + 2] == "100.0":
-            years = []
-            for t in toks[i + 3:]:
-                if re.fullmatch(r"20\d\d", t):
-                    years.append(int(t))
-                    if len(years) == 3:
-                        break
-                elif re.fullmatch(r"\d+\.\d", t):
-                    break
-            if len(years) == 3:
-                out.append((float(toks[i]), float(toks[i + 1]), years[0], years[1]))
-            i += 3
-        else:
+    while i < len(toks):
+        j, vals = i, []
+        for _ in range(3):
+            if j < len(toks) and dec(toks[j]):
+                vals.append(toks[j])
+                j += 1
+                if j < len(toks) and toks[j] in ("r", "p"):
+                    j += 1
+            else:
+                break
+        if len(vals) < 3:
             i += 1
+            continue
+        years = []
+        for t in toks[j:]:
+            if re.match(r"20\d\d(?![\d.])", t):  # the last year can be glued to the next label: "2030Female"
+                years.append(int(t[:4]))
+                if len(years) == 3:
+                    break
+            elif dec(t):
+                break
+        if len(years) == 3 and years[2] == 2030:
+            out.append((float(vals[0]), float(vals[1]), years[0], years[1]))
+        i = j
     return out
 
 
@@ -356,7 +367,7 @@ head = {ind: re.search(rf"4\.1\.\S+\s+{pat}", text, re.I) for ind, pat in
 expect(all(head.values()), "SDG Watch PDF: cannot find the Completion Rate and Cohort Survival Rate headings")
 if all(head.values()):
     c0, s0 = head["completion_rate"].start(), head["cohort_survival_rate"].start()
-    after = re.search(r"\n4\.1\.\S+\s+Dropout|\n4\.2\.", text[s0:], re.I)
+    after = re.search(r"\n4\.1\.\S+\s+Dropout|\n4\.2\.|\ntarget 4\.2", text[s0:], re.I)
     sections = {"completion_rate": text[c0:s0] if c0 < s0 else text[c0:],
                 "cohort_survival_rate": text[s0:s0 + after.start()] if after else text[s0:]}
     order = [(l, s) for l in LEVELS.values() for s in ("Both Sexes", "Female", "Male")]  # the PDF lists both, female, male
