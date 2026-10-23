@@ -67,8 +67,8 @@ export function App() {
           <p className="lead" data-reveal style={{ '--stagger': 2 } as CSSProperties}>
             Unemployment and underemployment from the Philippine Statistics Authority’s Labor Force Survey, how they
             differ by the level of schooling people completed, and what published studies and employer surveys say
-            about hiring. Every figure is checked against the publishers’ own tables and read through this
-            project’s MCP server.
+            about hiring. Every figure is checked against its publisher where possible, or labelled as quoted, and read
+            through this project’s MCP server.
           </p>
         </section>
 
@@ -81,7 +81,7 @@ export function App() {
           </p>
         )}
         {!data && !error && <p className="caption" aria-live="polite">Loading data from the MCP server…</p>}
-        {data && <Tiles data={data} />}
+        {data && <Tiles data={data} v={validity} />}
         {data && validity && (
           <>
             <Trend data={data} v={validity} />
@@ -107,7 +107,7 @@ export function App() {
   );
 }
 
-function Tiles({ data }: { data: Data }) {
+function Tiles({ data, v }: { data: Data; v: Validity | null }) {
   const tile = (title: string, result: RatesResult, base: string) => {
     const last = result.rows[result.rows.length - 1];
     if (!last) return null;
@@ -122,10 +122,13 @@ function Tiles({ data }: { data: Data }) {
     );
   };
   return (
-    <dl className="tiles">
-      {tile('Unemployment rate', data.unemployment, 'the labour force')}
-      {tile('Underemployment rate', data.underemployment, 'employed people')}
-    </dl>
+    <>
+      <dl className="tiles">
+        {tile('Unemployment rate', data.unemployment, 'the labour force')}
+        {tile('Underemployment rate', data.underemployment, 'employed people')}
+      </dl>
+      <Verified v={v} ids={['lfs-headlines']} />
+    </>
   );
 }
 
@@ -159,7 +162,7 @@ function Trend({ data, v }: { data: Data; v: Validity }) {
         ))}
       </div>
       <p className="caption">
-        {active[0]}, share of {active[2]}.{noCi && ' PSA doesn’t publish precision for these figures.'}
+        {active[0]}, share of {active[2]}.{noCi && ' 95% confidence intervals are not shown yet; PSA publishes them in Table A of each release.'}
       </p>
       <LineChart
         label={`${active[0]} since 2005`}
@@ -220,7 +223,8 @@ function ByEducation({ work, v }: { work: Work; v: Validity }) {
     const mine = work.years.map((y) => work.rows.find((r) => r.level === level && r.period === y));
     return {
       key: level, label: level,
-      values: mine.map((r) => r?.rate ?? 0),
+      values: mine.map((r) => r?.rate ?? 0), // a missing cell has no bar: display says so
+      display: mine.map((r) => (r ? pct1(r.rate) : 'no figure')),
       detail: mine.map((r, i) => `${work.years[i]}: ${r ? `${num.format(r.underemployed)} thousand underemployed of ${num.format(r.employed)} thousand employed` : 'no figure'}`),
     };
   });
@@ -250,7 +254,7 @@ function ByEducation({ work, v }: { work: Work; v: Validity }) {
 
 const paperCheck = (v: Validity, f: Figure) =>
   !f.checked_against ? 'Quoted from news coverage; the original survey isn’t public'
-    : v.report?.checks.find((c) => c.id === 'published-figures')?.passed ? 'Checked against the paper'
+    : v.report?.checks.find((c) => c.id === 'published-figures')?.passed && !v.changed?.includes('published_figures.csv') ? 'Checked against the paper'
     : 'Not verified: see “Is this data valid?” below';
 
 function Studies({ rows, v }: { rows: Figure[]; v: Validity }) {
@@ -296,7 +300,7 @@ function Studies({ rows, v }: { rows: Figure[]; v: Validity }) {
 }
 
 function Employers({ rows, v }: { rows: Figure[]; v: Validity }) {
-  const cards = rows.filter((f) => f.section === 'employers' || f.kind === 'study_estimate');
+  const cards = rows.filter((f) => f.section === 'employers');
   return (
     <section id="employers" className="card">
       <h2>What employers say</h2>
@@ -306,9 +310,15 @@ function Employers({ rows, v }: { rows: Figure[]; v: Validity }) {
             <p className="caption">{f.kind === 'employer_self_report' ? 'Self-reported by employers' : 'Study estimate'}</p>
             <p className="stat">{f.value}%</p>
             <p>{f.figure}</p>
+            {f.id === 'jobstreet-2023-pup' && (
+              <p>PUP leads where employers actually hire; UP (University of the Philippines) leads where they wish applicants came from.</p>
+            )}
             <p className="caption">{f.kind === 'study_estimate' ? `Published ${f.year} · ${f.population}` : `Year: ${f.year}`}</p>
             <p className="caption">{f.sample === 'not published' ? 'Sample size not published' : `Sample: ${f.sample}`}</p>
             {f.kind === 'study_estimate' && <p className="caption">Measure: {f.measure}</p>}
+            {f.id === 'melchor-2022-overeducated' && (
+              <p className="caption">The paper treats this job-analysis figure as the upper bound estimate of overeducation; its other two methods give about 10% and about 25%.</p>
+            )}
             <p className="caption"><a href={f.url}>{f.source}</a></p>
             <p className="caption">{paperCheck(v, f)}</p>
           </article>

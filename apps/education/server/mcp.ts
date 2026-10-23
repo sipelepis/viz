@@ -177,7 +177,7 @@ export function createMcpServer() {
 
   server.registerTool('about_the_data', {
     title: 'Sources, checks and caveats',
-    description: 'The data README: every source, the ground-truth checks, and caveats to read before charting.',
+    description: 'The education data README: every source, the ground-truth checks, and caveats to read before charting.',
     annotations: { readOnlyHint: true },
   }, () => ({ content: [{ type: 'text' as const, text: readme() }] }));
 

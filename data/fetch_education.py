@@ -172,7 +172,7 @@ PUBLISHED = [  # quoted figures; a news article is kept only as its URL and the 
      "quote": "Employers expect that 12,544 of their 17,273 entry-level jobs would be filled by college graduates "
               "this year.",
      "checked_against": ""},
-    {"id": "melchor-2022-overeducated", "section": "gap",
+    {"id": "melchor-2022-overeducated", "section": "employers",
      "figure": "Employed people with more schooling than their job requires", "value": 39, "unit": "percent",
      "measure": "job analysis (years of schooling the occupation requires)",
      "population": "employed people, merged LFS and FIES data for 2006 and 2012", "year": 2022,

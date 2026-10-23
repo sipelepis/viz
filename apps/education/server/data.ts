@@ -68,7 +68,15 @@ export function tables() {
   return cache;
 }
 
-export const readme = () => readFileSync(README, 'utf8');
+/** Only the '## Education' section of the shared README: up to the next '## ' heading or the end. */
+export function readme() {
+  const text = readFileSync(README, 'utf8');
+  const start = text.search(/^## Education[ \t]*$/m);
+  if (start < 0) throw new Error("data/README.md has no '## Education' section");
+  const rest = text.slice(start + 1);
+  const next = rest.search(/^## /m);
+  return (next < 0 ? text.slice(start) : text.slice(start, start + 1 + next)).trimEnd() + '\n';
+}
 
 export type Report = {
   status: 'pass' | 'fail';

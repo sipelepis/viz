@@ -149,18 +149,18 @@ export function LineChart({ points, label, caption, rule, max: fixedMax }: {
           <thead>
             <tr>
               <th scope="col">Month</th>
-              <th scope="col">Rate</th>
-              <th scope="col">95% CI</th>
               <th scope="col">Status</th>
+              <th scope="col">95% CI</th>
+              <th scope="col">Rate</th>
             </tr>
           </thead>
           <tbody>
             {points.map((pt) => (
               <tr key={pt.key}>
                 <th scope="row">{pt.label}</th>
-                <td>{pct(pt.value)}</td>
-                <td>{pt.ci ? `${pt.ci[0].toFixed(1)}–${pt.ci[1].toFixed(1)}%` : '–'}</td>
                 <td>{status(pt)}</td>
+                <td>{pt.ci ? `${pt.ci[0].toFixed(1)}–${pt.ci[1].toFixed(1)}%` : '–'}</td>
+                <td>{pct(pt.value)}</td>
               </tr>
             ))}
           </tbody>
