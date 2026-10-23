@@ -14,6 +14,7 @@ pnpm nx test cancer             # MCP tool tests (node --test)
 | --- | --- |
 | `packages/design-system` | Akashi design system: `tokens.css` (CSS variables) and `index.css` (fonts, base, type scale, buttons, cards, dialog). Spec: [DESIGN.md](packages/design-system/DESIGN.md). |
 | `apps/cancer` | Vite + React + TypeScript dashboard for the cancer topic, plus the data MCP server in `server/`. |
+| `apps/education` | Vite + React + TypeScript page on schooling and work in the Philippines, plus the data MCP server in `server/`. |
 | `data` (`@viz/data`) | Ground-truth datasets: raw sources, tidy CSVs, and checks against the publisher's figures. See [data/README.md](data/README.md). |
 
 Use it in an app with `import '@viz/design-system'` and add `"@viz/design-system": "workspace:^"` to that app's dependencies.
@@ -120,3 +121,55 @@ To move the MCP server to **GCP Cloud Run**:
 3. Re-stage with its URL (`deploy/stage.sh https://viz-cancer-mcp-….run.app`) and redeploy Vercel. `/mcp` then forwards to Cloud Run.
 
 Only data that passes `@viz/data:check` is staged.
+
+## Education app
+
+`apps/education` shows what Philippine labour-force and school data says about schooling and work: unemployment since 2005, who finishes school, underemployment by highest grade completed, what a degree is worth in published studies, and what employers say. Every figure is traced to its source in [data/README.md](data/README.md#education).
+
+The data comes first. Build it once, then run the app:
+
+```
+python3 data/fetch_education.py --download   # the pinned PSA PDFs into the gitignored data/download/
+pnpm nx run @viz/data:build-education        # tidy CSVs into data/clean-education/ and the checks
+pnpm nx dev education                        # dev server at http://localhost:4210, MCP at /mcp
+pnpm nx preview education                    # built app at http://localhost:4310, MCP at /mcp
+pnpm nx test education                       # MCP tool tests (node --test)
+```
+
+The page's "Is this data valid?" card reports whether the checks passed. Until the August 2026 LFS press release is pinned, it reads **Not verified**; the data-prerequisite section of [data/README.md](data/README.md#known-gap-the-august-2026-lfs-press-release-is-not-pinned) gives the fix.
+
+Browser checks run against the preview server. They need a `node_modules` that has playwright. The one in the browser-automation project works:
+
+```
+NODE_PATH=/home/whoahskies/work/boostkh/browser-automation/node_modules node apps/education/e2e/check.cjs C4
+```
+
+Pass one check id per run: `C3` to `C10`. `BASE_URL` overrides the default `http://localhost:4310`.
+
+### MCP server
+
+`apps/education/server/mcp.ts` exposes the verified tables as read-only MCP tools:
+
+| Tool | Returns |
+| --- | --- |
+| `labour_rates` | LFS rates (participation, employment, unemployment, underemployment) by period, from PSA's key employment indicators |
+| `underemployment_by_education` | Employed and underemployed persons by highest grade completed, with the derived underemployment rate (ages 15+) |
+| `school_completion` | DepEd completion and SDG 4 cohort survival rates by region and level. Administrative data, not survey data |
+| `published_figures` | Figures quoted from the World Bank, PIDS and Melchor (2022) papers, and from news coverage of employer surveys, each with its source and quoted sentence |
+| `data_validation` | Each ground-truth check, what it compared against, and whether the files being served still match the checked ones |
+| `about_the_data` | The sources and caveats |
+
+The server runs over two transports, as the cancer server does:
+
+- **stdio, for Claude Code.** `.mcp.json` registers it as `viz-education` (`apps/education/server/stdio.ts`).
+- **Streamable HTTP at `/mcp`.** It's mounted in `vite dev` and `vite preview`, and in production as a Vercel function.
+
+### Deployment
+
+```
+apps/education/deploy/stage.sh                    # education data checks + build, then stage .deploy/web
+ALLOW_UNVERIFIED=1 apps/education/deploy/stage.sh # while the LFS press release is unpinned: stages data that fails checks
+cd apps/education/.deploy/web && npx vercel deploy --prod   # Vercel project viz-education
+```
+
+`stage.sh` is strict by default: it aborts unless the education checks pass. With `ALLOW_UNVERIFIED=1` it stages anyway, and the site shows **Not verified**. Only use the override while the LFS gap is open.

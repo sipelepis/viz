@@ -166,3 +166,110 @@ Checked and parked:
 
 - **data.gov.ph.** It isn't CKAN, and its API needs a key the frontend generates. Its 175 datasets are mostly DOH COVID-19 drops, with no cancer or facility data found.
 - **PCSO MAP, DSWD AICS and DOH MAIFIP.** No structured data is published. The DSWD AICS PDFs contain beneficiary names and don't separate medical or cancer aid, so they're not usable here.
+
+## Education
+
+The education page (`apps/education`) uses PSA labour-force and school data, the PSA SDG Watch, three papers and some news coverage of employer surveys. Its tidy tables are written to `clean-education/`, which is gitignored and rebuilt by the commands below.
+
+```
+python3 data/fetch_education.py --download  # the pinned PSA PDFs only, into the gitignored data/download/
+python3 data/fetch_education.py             # refetch the OpenSTAT tables, download missing PDFs, tidy
+python3 data/fetch_education.py --offline   # re-tidy from the snapshots and pinned PDFs, no network
+python3 data/check_education.py             # the ground-truth checks; exits non-zero on any mismatch
+```
+
+Through pnpm (`@viz/data`):
+
+| Target | What it runs |
+| --- | --- |
+| `pnpm nx run @viz/data:build-education` | `fetch_education.py --offline`, then `check_education.py --report-only` (records failures, doesn't break the build) |
+| `pnpm nx run @viz/data:check-education` | `check_education.py`, strict |
+| `pnpm nx run @viz/data:fetch-education` | `fetch_education.py` (refetches the OpenSTAT tables) |
+
+### Sources
+
+OpenSTAT (PSA's PxWeb database). Each file is a snapshot in `raw/psa/openstat/` and is read by `fetch_education.py`:
+
+| Table | What | URL |
+| --- | --- | --- |
+| `0021B3FKEI2` | Key employment indicators, April 2005 to the latest month (rates) | https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1B__LFS/0021B3FKEI2.px/ |
+| `0141B3FEMP7` | Employed persons by highest grade completed (2017 PSCED) | https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1B__LFS/0141B3FEMP7.px/ |
+| `0151B3FUDR2` | Underemployed persons by highest grade completed | https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__1B__LFS/0151B3FUDR2.px/ |
+| `0023I3C0412` | SDG 4.1.2 completion rate, by region (DepEd EBEIS) | https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__3I__G04/0023I3C0412.px/ |
+| `0033I3C41S1` | SDG 4.1.s1 cohort survival rate, by region | https://openstat.psa.gov.ph/PXWeb/pxweb/en/DB/DB__3I__G04/0033I3C41S1.px/ |
+
+PSA PDFs (not committed; see below):
+
+- **LFS press release, August 2026, Table A-1 and Table A.** https://psa.gov.ph/statistics/labor-force-survey. Table A-1 gives the headline rates, Table A their precision. **Not pinned yet** (see the known gap).
+- **2024 Consolidated SDG Watch, Goal 4** (PSA, as of 24 March 2025), `psa-sdg-watch-goal4.pdf`. Pinned in `fetch_education.py` by URL and SHA-256: https://psa.gov.ph/system/files/phdsd/2024%20Consolidated%20Watch_24Mar2025_0.pdf
+
+Papers, committed in `raw/education/`:
+
+| File | Citation | Licence | URL |
+| --- | --- | --- | --- |
+| `wb-prwp-11163.pdf` | Belghith, Fernandez and Lavin (2025), *Inequality, Education, and Occupational Change in the Philippines*, World Bank Policy Research Working Paper 11163 | CC BY 3.0 IGO | https://openknowledge.worldbank.org/entities/publication/dec2239c-5836-4312-b596-bc5058b15512 |
+| `pids-pn-2024-09.pdf` | Albert, Punongbayan and Muñoz (2024), *Returns to education in the Philippines (2005–2022)*, PIDS Policy Notes 2024-09 | CC BY-NC (as stated by PIDS) | https://pidswebs.pids.gov.ph/CDN/document/pidspn2409.pdf |
+| `melchor-2022-pjd.pdf` | Melchor (2022), *Surveying the Extent and Wage Consequences of Education-Job Mismatches in the Philippines*, Philippine Journal of Development | CC BY-NC 4.0 | https://doi.org/10.62986/pjd2022.46.1d |
+
+Employer surveys are news coverage, not the reports themselves. Their URLs and quoted sentences are kept in `published_figures.csv`: JobStreet fresh-graduate reports (2014, 2015 and 2016, via Rappler; 2023, via Philstar), and the Philippine Business for Education 2024 Jobs Outlook (via BusinessWorld).
+
+### Licences and why the PSA PDFs are not committed
+
+- **World Bank PRWP 11163** is CC BY 3.0 IGO. Attribute it in the World Bank format: © World Bank, with the licence named.
+- **Melchor 2022** is CC BY-NC 4.0.
+- **PIDS PN 2024-09** is CC BY-NC, as stated by PIDS.
+- The repo is noncommercial, so these licences are compatible with it. Any commercial use needs a fresh check.
+- **PSA PDFs have no stated reuse licence.** RA 8293 s.176 covers government works, but it doesn't grant a licence to republish them. So the PSA PDFs go to the gitignored `data/download/`, and `fetch_education.py` pins each one by SHA-256. `--download` fetches them, and a checksum mismatch stops the build.
+
+### Ground truths
+
+`check_education.py` writes `clean-education/validation.json` with each check, what it compared against, its assertions and any failures, plus a SHA-256 of each clean CSV. The app's `data_validation` tool reads it and says the data is verified only if every check passed and nothing changed since.
+
+1. **`lfs-headlines`: LFS headline rates match Table A-1.** Every Table A-1 cell is in `labour_rates.csv` with the same value and status, rounded as Table A's precision allows. The OpenSTAT key-rates snapshot agrees for both sexes.
+2. **`lfs-education`: education of the employed and underemployed adds up.** `education_work.csv` equals the two OpenSTAT snapshots level by level, sums to their totals, and agrees with the underemployment rate.
+3. **`sdg-completion`: completion and survival rates match PSA's SDG Watch.** The national rows equal the SDG Watch Goal 4 PDF. Every region equals the OpenSTAT SDG 4 snapshots.
+4. **`published-figures`: quoted figures appear in their sources.** Each quote that points at a committed paper occurs in that paper's text and contains its figure.
+
+### Tidy tables (`clean-education/`)
+
+- `labour_rates.csv` has columns `period, frequency, measure, value, status, ci_low, ci_high`.
+  - `measure` is one of the LFS rates (labour force participation, employment, unemployment, underemployment).
+  - `status` is the PSA finality marker from the OpenSTAT footnotes.
+  - `ci_low` and `ci_high` are the confidence interval, where PSA publishes one.
+- `education_work.csv` has columns `period, frequency, level_order, level, employed, underemployed`.
+  - One row per highest grade completed. Subtotals are dropped so the parts partition the employed.
+  - `underemployed` is counted from the OpenSTAT underemployment table.
+- `completion.csv` has columns `school_year, region_code, region, level, sex, indicator, value`.
+  - `level` is Elementary, Junior high or Senior high.
+  - `indicator` is the completion rate or the cohort survival rate.
+  - `school_year` ends in the calendar year PSA labels the table with.
+- `published_figures.csv` has columns `id, section, figure, value, unit, measure, population, year, sample, kind, source, url, quote, checked_against`.
+  - One row per quoted figure. `section` is `gap` (the graduate hiring gap, from the papers) or `employers` (from the news coverage of employer surveys).
+  - `kind` says whether the figure is a published estimate or a derived one.
+  - `checked_against` names the committed file the check reads, or is empty for news links, which are kept as URLs only.
+  - The file is never a computed table; the figures are quoted, so they aren't comparable with each other.
+
+`clean-education/` is the output folder. It's gitignored, rebuilt by `build-education`, and written by `fetch_education.py`.
+
+### Caveats
+
+- **LFS frequency changed.** The labour force survey was quarterly up to October 2020, and monthly since. Don't read a monthly series against a quarterly one as a like-for-like trend, and check `frequency` before charting.
+- **Precision differs.** OpenSTAT gives three decimal places, while PSA's releases give one. Tables A-1 and the checks compare at one decimal; the tidy CSV keeps what OpenSTAT gives.
+- **Underemployment by education is derived.** PSA publishes counts of underemployed persons by grade, not a rate by grade. The rate is derived from those counts over the employed, for ages 15+. It isn't age-adjusted, and it isn't the 25–34 figure the papers use.
+- **Completion data is administrative.** DepEd completion and cohort survival come from school records (EBEIS), not from a household survey. They are never mixed with PSA attendance or LFS figures on one chart.
+- **Employer figures are self-reported.** The employer surveys are what employers said they wanted, in surveys run by the sources named. They're not measures of hiring.
+- **No causal claims.** Education and earnings, employment or unemployment are associations in these sources. Nothing here shows that a degree causes a higher wage or a job.
+
+### Known gap: the August 2026 LFS press release is not pinned
+
+`psa.gov.ph` puts scripts behind a Cloudflare challenge, so `fetch_education.py` can't download the press release or its Table A XLSX. Until they're pinned, `lfs-headlines` fails, the build records it, and the site shows **Not verified**. Staging then needs `ALLOW_UNVERIFIED=1` (see the README).
+
+To fix it:
+
+1. In a browser, open https://psa.gov.ph/statistics/labor-force-survey and save these files into `data/download/`:
+   - `Press-Release-for-August-2026-LFS.pdf`
+   - `TABLE A - Key Employment Indicators with Measures of Precision, Philippines_Aug2026.xlsx`
+2. Compute each file's SHA-256 (`sha256sum data/download/...`) and add both to `PINNED` in `data/fetch_education.py`, with their URLs.
+3. Write the parsers: Table A-1 from the press release, and Table A from the XLSX. They feed `lfs-headlines` and the precision comparison in `check_education.py`.
+4. Rebuild and check: `pnpm nx run @viz/data:build-education`, then `pnpm nx run @viz/data:check-education`. Every check should pass.
+5. Redeploy: `apps/education/deploy/stage.sh` (strict, no override), then `cd apps/education/.deploy/web && npx vercel deploy --prod`.
