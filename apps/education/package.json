@@ -17,7 +17,30 @@
       "test": {
         "dependsOn": [
           {
-            "projects": ["@viz/data"],
+            "projects": [
+              "@viz/data"
+            ],
+            "target": "build-education"
+          }
+        ]
+      },
+      "dev": {
+        "dependsOn": [
+          {
+            "projects": [
+              "@viz/data"
+            ],
+            "target": "build-education"
+          }
+        ]
+      },
+      "preview": {
+        "dependsOn": [
+          "build",
+          {
+            "projects": [
+              "@viz/data"
+            ],
             "target": "build-education"
           }
         ]
